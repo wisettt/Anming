@@ -1,108 +1,112 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 
 function Orders() {
-  // ตัวอย่างข้อมูลคำสั่งซื้อ
-  const [orders] = useState([
-    {
-      id: 1,
-      table: 'โต๊ะที่ 1',
-      items: [
-        { name: 'มอคค่า', quantity: 1, price: 50 },
-        { name: 'ลาเต้', quantity: 1, price: 55 },
-        { name: 'เอสเปรสโซ', quantity: 1, price: 45 },
-        { name: 'อเมริกาโนน้ำส้ม', quantity: 1, price: 50 },
-      ],
-    },
-    {
-      id: 2,
-      table: 'โต๊ะที่ 2',
-      items: [
-        { name: 'คาปูชิโน', quantity: 1, price: 65 },
-        { name: 'มาคิอาโต้', quantity: 1, price: 55 },
-        { name: 'คาปูชิโน', quantity: 1, price: 65 },
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [selectedOrder, setSelectedOrder] = useState(null);
 
-      ],
-    },
-    {
-      id: 2,
-      table: 'โต๊ะที่ 3',
-      items: [
-        { name: 'มาคิอาโต้', quantity: 1, price: 55 },
-        { name: 'คาราเมลมาคิอาโต้', quantity: 2, price: 40 },
-        { name: 'อเมริกาโน', quantity: 1, price: 45 },
-      ],
-    },
-    {
-      id: 2,
-      table: 'โต๊ะที่ 4',
-      items: [
-        { name: 'เอสเปรสโซ', quantity: 2, price: 75 },
-        { name: 'ลาเต้', quantity: 2, price: 45 },
-       
-      ],
-    },
-    
-  ])
-  
+  useEffect(() => {
+    fetchOrders();
+    const interval = setInterval(fetchOrders, 5000); // อัปเดตทุก 5 วินาที
+    return () => clearInterval(interval);
+  }, []);
 
-  const [selectedOrder, setSelectedOrder] = useState(null); // ใช้สำหรับเปิดป๊อปอัป
+  const fetchOrders = async () => {
+    try {
+      const response = await axios.get('http://localhost:5000/orders');
+      if (response.data) {
+        const pendingOrders = response.data.filter(order => order.payment_status !== 'paid');
+        setOrders(pendingOrders);
+      }
+      setLoading(false);
+    } catch (error) {
+      setError('ไม่สามารถโหลดคำสั่งซื้อได้');
+      setLoading(false);
+    }
+  };
 
-  // คำนวณราคาสินค้ารวม
-  const calculateTotal = (items) =>
-    items.reduce((total, item) => total + item.quantity * item.price, 0);
+  const calculateTotal = (items) => {
+    try {
+      const parsedItems = JSON.parse(items);
+      return parsedItems.reduce((total, item) => total + item.quantity * item.price, 0);
+    } catch (error) {
+      return 0;
+    }
+  };
+
+  const handlePayment = async (orderId) => {
+    try {
+      await axios.put(`http://localhost:5000/orders/${orderId}/payment`);
+      setOrders(prevOrders => prevOrders.filter(order => order.id !== orderId));
+      setSelectedOrder(null);
+    } catch (error) {
+      console.error("Error confirming payment:", error);
+    }
+  };
+
+  if (loading) return <p className="text-center text-gray-600">⏳ กำลังโหลดข้อมูล...</p>;
+  if (error) return <p className="text-center text-red-500">{error}</p>;
 
   return (
-    <div className="p-6">
-      <h2 className="text-center text-2xl font-bold mb-4">คำสั่งซื้อ</h2>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div className="p-8 bg-gradient-to-br from-blue-200 to-purple-300 min-h-screen">
+      <h2 className="text-center text-5xl font-extrabold text-purple-900 mb-8 drop-shadow-lg">📜 คำสั่งซื้อ</h2>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
         {orders.map((order) => (
           <div
             key={order.id}
-            className="bg-white p-4 shadow-md rounded-lg flex flex-col justify-between"
+            className="bg-white p-6 shadow-2xl rounded-3xl flex flex-col justify-between transform transition hover:scale-105 hover:shadow-2xl border border-gray-200 relative overflow-hidden"
           >
-            <div>
-              <h3 className="font-bold text-lg mb-2">{order.table}</h3>
-              <p>จำนวนสินค้า: {order.items.length}</p>
-              <p>ราคารวม: {calculateTotal(order.items)} บาท</p>
+            <div className="text-center">
+              <h3 className="font-extrabold text-2xl mb-2 text-gray-800">โต๊ะที่: {order.table_number}</h3>
+              <p className="text-gray-600 text-lg font-semibold">💰 ราคารวม: <span className="text-green-600">{calculateTotal(order.items)} บาท</span></p>
             </div>
             <button
               onClick={() => setSelectedOrder(order)}
-              className="mt-4 bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600"
+              className="mt-4 bg-purple-700 text-white py-3 px-6 rounded-full hover:bg-purple-800 transition duration-300 shadow-lg mx-auto w-full"
             >
-              ดูรายละเอียด
+              🔍 ดูรายละเอียด
             </button>
           </div>
         ))}
       </div>
 
-      {/* ป๊อปอัปแสดงรายละเอียด */}
       {selectedOrder && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-          <div className="bg-white p-6 rounded-lg shadow-lg w-11/12 max-w-md">
-            <h3 className="text-xl font-bold mb-4">รายละเอียดคำสั่งซื้อ</h3>
-            <p className="mb-2">โต๊ะ: {selectedOrder.table}</p>
-            <ul className="mb-4">
-              {selectedOrder.items.map((item, index) => (
-                <li key={index} className="flex justify-between border-b py-2">
-                  <span>{item.name} x {item.quantity}</span>
-                  <span>{item.price * item.quantity} บาท</span>
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm z-50 animate-fadeIn">
+          <div className="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-md relative">
+            <button
+              className="absolute top-4 right-4 text-gray-600 hover:text-gray-800 transition-colors"
+              onClick={() => setSelectedOrder(null)}
+            >✖</button>
+            <h3 className="text-3xl font-bold text-center text-purple-800 mb-6">📦 รายละเอียดคำสั่งซื้อ</h3>
+            <p className="mb-2 text-gray-700">📍 โต๊ะที่: <span className="font-bold text-blue-600">{selectedOrder.table_number}</span></p>
+            <ul className="mb-4 space-y-4">
+              {JSON.parse(selectedOrder.items).map((item, index) => (
+                <li key={index} className="flex items-center border-b pb-3">
+                  <img
+                    src={`http://localhost:5000${item.image}`}
+                    alt={item.name}
+                    className="w-16 h-16 object-cover rounded-lg mr-4 border border-gray-300"
+                  />
+                  <div className="flex-1">
+                    <p className="font-medium text-gray-700">{item.name} x {item.quantity}</p>
+                    <p className="text-gray-600">💵 {item.price * item.quantity} บาท</p>
+                  </div>
                 </li>
               ))}
             </ul>
-            <p className="font-bold">ราคารวม: {calculateTotal(selectedOrder.items)} บาท</p>
-            <div className="flex justify-end mt-4 space-x-2">
+            <p className="font-bold text-gray-800 text-lg">💰 ราคารวม: <span className="text-green-600">{calculateTotal(selectedOrder.items)} บาท</span></p>
+            <div className="flex justify-end mt-4 space-x-3">
               <button
-                onClick={() => window.print()}
-                className="bg-green-500 text-white py-2 px-4 rounded hover:bg-green-600"
-              >
-                พิมพ์ใบเสร็จ
-              </button>
+                onClick={() => handlePayment(selectedOrder.id)}
+                className="bg-blue-600 text-white px-8 py-3 rounded-full hover:bg-blue-700 transition-all duration-300 shadow-lg"
+              >💳 จ่ายเงินแล้ว</button>
               <button
                 onClick={() => setSelectedOrder(null)}
-                className="bg-red-500 text-white py-2 px-4 rounded hover:bg-red-600"
-              >
-                ปิด
-              </button>
+                className="bg-red-600 text-white px-8 py-3 rounded-full hover:bg-red-700 transition-all duration-300 shadow-lg"
+              >❌ ปิด</button>
             </div>
           </div>
         </div>

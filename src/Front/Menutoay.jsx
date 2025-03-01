@@ -5,10 +5,10 @@ function Menutoay() {
   const [menuItems, setMenuItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
-  const [searchQuery, setSearchQuery] = useState(""); // สำหรับค้นหา
-  const [filter, setFilter] = useState("all"); // "all", "available", "unavailable"
-  const [currentPage, setCurrentPage] = useState(1); // สำหรับแบ่งหน้า
-  const itemsPerPage = 5; // จำนวนรายการต่อหน้า
+  const [searchQuery, setSearchQuery] = useState(""); 
+  const [filter, setFilter] = useState("all"); 
+  const [currentPage, setCurrentPage] = useState(1); 
+  const itemsPerPage = 5; 
 
   useEffect(() => {
     const fetchMenus = async () => {
@@ -33,27 +33,28 @@ function Menutoay() {
     const token = localStorage.getItem("token");
     const menu = menuItems.find((item) => item.id === id);
     const updatedAvailability = !menu.isAvailable;
-
+  
     try {
       await axios.put(
-        `http://localhost:5000/menu/availability/${id}`,
-        { isAvailable: updatedAvailability },
-        { headers: { Authorization: `Bearer ${token}` } }
+        `http://localhost:5000/menu/update-menu/${id}`,
+        { name: menu.name, price: menu.price, details: menu.details, isAvailable: updatedAvailability },
+        { headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" } }
       );
-      setMenuItems(
-        menuItems.map((item) =>
-          item.id === id ? { ...item, isAvailable: updatedAvailability } : item
-        )
-      );
+  
+      setMenuItems(menuItems.map((item) =>
+        item.id === id ? { ...item, isAvailable: updatedAvailability } : item
+      ));
+  
+      // 🟢 แสดงข้อความอัปเดต และให้มันหายไปหลังจาก 1 วินาที
       setMessage(`สถานะเมนู "${menu.name}" ถูกอัปเดตเรียบร้อย`);
-      setTimeout(() => setMessage(""), 3000);
+      setTimeout(() => setMessage(""), 1000); // 1000ms = 1 วินาที
+  
     } catch (error) {
-      console.error("Error updating availability:", error.message);
+      console.error("❌ Error updating availability:", error.response?.data || error.message);
       setMessage("เกิดข้อผิดพลาดในการอัปเดตสถานะเมนู");
-      setTimeout(() => setMessage(""), 3000);
+      setTimeout(() => setMessage(""), 1000); // กรณีเกิดข้อผิดพลาดก็ให้ข้อความหายไป
     }
   };
-
   const filteredMenu = menuItems
     .filter((item) => {
       if (filter === "available") return item.isAvailable;
@@ -75,13 +76,16 @@ function Menutoay() {
   };
 
   return (
-    <div className="p-8 bg-gray-100 min-h-screen">
-      <h2 className="text-4xl font-bold text-center text-blue-600 mb-6">
-        รายการเมนู
+    <div className="p-8 min-h-screen" 
+      style={{ background: "linear-gradient(135deg, rgb(221, 169, 232), rgb(218, 247, 251))" }}>
+      
+      <h2 className="text-4xl font-bold text-center mb-6" style={{ color: "rgb(90, 60, 130)" }}>
+        🍽️ รายการเมนู
       </h2>
 
       {message && (
-        <div className="bg-green-100 text-green-800 p-4 mb-4 rounded-lg shadow-md">
+        <div className="p-4 mb-4 rounded-lg shadow-md" 
+          style={{ backgroundColor: "rgb(218, 247, 251)", color: "rgb(80, 60, 100)" }}>
           {message}
         </div>
       )}
@@ -90,8 +94,9 @@ function Menutoay() {
         {/* ค้นหา */}
         <input
           type="text"
-          placeholder="ค้นหาเมนู..."
+          placeholder="🔍 ค้นหาเมนู..."
           className="w-full sm:w-1/2 px-4 py-2 border rounded-lg"
+          style={{ backgroundColor: "white", borderColor: "rgb(170, 120, 220)" }}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
         />
@@ -99,6 +104,7 @@ function Menutoay() {
         {/* ตัวกรอง */}
         <select
           className="px-4 py-2 border rounded-lg"
+          style={{ backgroundColor: "white", borderColor: "rgb(170, 120, 220)" }}
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
         >
@@ -116,7 +122,8 @@ function Menutoay() {
             displayedItems.map((item) => (
               <div
                 key={item.id}
-                className="flex justify-between items-center p-6 bg-white border rounded-lg shadow-md"
+                className="flex justify-between items-center p-6 border rounded-lg shadow-md"
+                style={{ backgroundColor: "white", borderColor: "rgb(170, 120, 220)" }}
               >
                 <div className="flex items-center">
                   {item.image && (
@@ -126,11 +133,7 @@ function Menutoay() {
                       className="w-16 h-16 object-cover mr-4 rounded-lg"
                     />
                   )}
-                  <span
-                    className={`text-lg font-semibold ${
-                      !item.isAvailable ? "text-gray-400" : ""
-                    }`}
-                  >
+                  <span className={`text-lg font-semibold ${!item.isAvailable ? "text-gray-400" : "text-gray-700"}`}>
                     {item.name}
                   </span>
                   {!item.isAvailable && (
@@ -138,17 +141,12 @@ function Menutoay() {
                   )}
                 </div>
 
-                <span className="text-xl font-bold text-gray-700">
-                  {item.price} บาท
-                </span>
+                <span className="text-xl font-bold text-gray-700">{item.price} บาท</span>
 
                 <button
                   onClick={() => toggleAvailability(item.id)}
-                  className={`py-1 px-4 rounded-lg text-white ${
-                    item.isAvailable
-                      ? "bg-green-500 hover:bg-green-600"
-                      : "bg-gray-500 hover:bg-gray-600"
-                  }`}
+                  className="py-1 px-4 rounded-lg text-white"
+                  style={{ backgroundColor: item.isAvailable ? "rgb(160, 110, 220)" : "rgb(150, 150, 150)" }}
                 >
                   {item.isAvailable ? "พร้อมขาย" : "ไม่พร้อมขาย"}
                 </button>
@@ -161,29 +159,21 @@ function Menutoay() {
           {/* Pagination */}
           {totalPages > 1 && (
             <div className="flex justify-center items-center space-x-4 mt-6">
-              <button
-                onClick={() => handlePageChange(currentPage - 1)}
-                className="px-4 py-2 bg-gray-300 rounded-lg hover:bg-gray-400"
-              >
+              <button onClick={() => handlePageChange(currentPage - 1)} 
+                className="px-4 py-2 rounded-lg" 
+                style={{ backgroundColor: "rgb(218, 247, 251)" }}>
                 ก่อนหน้า
               </button>
               {Array.from({ length: totalPages }, (_, i) => (
-                <button
-                  key={i}
-                  onClick={() => handlePageChange(i + 1)}
-                  className={`px-4 py-2 rounded-lg ${
-                    currentPage === i + 1
-                      ? "bg-blue-500 text-white"
-                      : "bg-gray-300 hover:bg-gray-400"
-                  }`}
-                >
+                <button key={i} onClick={() => handlePageChange(i + 1)}
+                  className="px-4 py-2 rounded-lg"
+                  style={{ backgroundColor: currentPage === i + 1 ? "rgb(170, 120, 220)" : "rgb(218, 247, 251)", color: currentPage === i + 1 ? "white" : "black" }}>
                   {i + 1}
                 </button>
               ))}
-              <button
-                onClick={() => handlePageChange(currentPage + 1)}
-                className="px-4 py-2 bg-gray-300 rounded-lg hover:bg-gray-400"
-              >
+              <button onClick={() => handlePageChange(currentPage + 1)} 
+                className="px-4 py-2 rounded-lg" 
+                style={{ backgroundColor: "rgb(218, 247, 251)" }}>
                 ถัดไป
               </button>
             </div>
